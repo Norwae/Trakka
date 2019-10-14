@@ -18,6 +18,10 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import de.codecentric.trakka_app.model.Booking
 import de.codecentric.trakka_app.model.BookingKind
+import de.codecentric.trakka_app.model.Company
+import de.codecentric.trakka_app.model.WorkerSetup
+import de.codecentric.trakka_app.workperiod.Workperiod
+import de.codecentric.trakka_app.workperiod.Workperiods
 import kotlinx.android.synthetic.main.activity_main.*
 import java.sql.Timestamp
 import java.time.Instant
@@ -30,10 +34,11 @@ class MainActivity : AppCompatActivity() {
 
     private val user: FirebaseUser?
         get() = FirebaseAuth.getInstance().currentUser
+
     // Choose authentication providers
     private val providers = arrayListOf(AuthUI.IdpConfig.EmailBuilder().build())
     private val firestore = FirebaseFirestore.getInstance()
-    private val contents = mutableListOf<Booking>()
+
     private lateinit var listView: ListView
 
     private val collection by lazy {
@@ -41,20 +46,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onToggleClicked(view: View) {
-        val booking = Booking(BookingKind.BLOCK, Date(), Date(), Date(), UUID.randomUUID().toString())
+        val booking = Booking(BookingKind.BLOCK, Date(), Date(), Date(), "KLdjd")
         collection.add(booking)
     }
 
     private fun onLoggedIn() {
-        collection.addSnapshotListener { value, e ->
-            if (e == null) {
-                val model = value!!.toObjects(Booking::class.java)
-                Log.i("UDPATE","Received data $model")
-                contents.clear()
-                contents.addAll(model)
-                resetAdapter()
-            }
-        }
+        collection.addSnapshotListener(Workperiods.updateListener)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -70,7 +67,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         listView = findViewById(R.id.bookingList)
-        resetAdapter()
+        Workperiods.listeners += {
+            listView.adapter = ArrayAdapter<Workperiod>(this, R.layout.list_contents, it)
+        }
 
         val addButton = findViewById<Button>(R.id.addModelButton)
         addButton.setOnClickListener(this::onToggleClicked)
@@ -89,10 +88,6 @@ class MainActivity : AppCompatActivity() {
             onLoggedIn()
         }
 
-    }
-
-    private fun resetAdapter() {
-        listView.adapter = ArrayAdapter<Booking>(this, R.layout.list_contents, contents)
     }
 
 }

@@ -9,16 +9,19 @@ import de.codecentric.trakka_app.model.fromDocumentSnapshot
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.properties.Delegates
 
-const val BUILD_WORK_PERIOD_TAG = "WP"
+const val BUILD_WORK_PERIOD_TAG = "WorkPeriod"
 typealias WorkPeriodListener = (List<Workperiod>) -> Unit
 
 object Workperiods {
     val listeners = CopyOnWriteArrayList<WorkPeriodListener>()
 
     var workperiods: List<Workperiod> by Delegates.observable(mutableListOf()) { _, _, new ->
-        for (l in listeners) {
-            Log.d("WP", "Invoking callback $l")
-            l.invoke(new)
+        for (listener in listeners) {
+            Log.d(
+                BUILD_WORK_PERIOD_TAG,
+                "Invoking callback ${listener::class} with ${new.size} records"
+            )
+            listener.invoke(new)
         }
     }
         private set
@@ -26,9 +29,11 @@ object Workperiods {
     val updateListener = EventListener<QuerySnapshot> { value, err ->
         if (err == null) {
             val model = value!!.documents.map(::fromDocumentSnapshot)
-            Log.i("WP", "Received data $model")
+            Log.i("WP", "Received data (${model.size} records)")
             val newContents = constructWorkPeriods(model).sortedByDescending { it.start }
             workperiods = newContents
+        } else {
+            Log.e(BUILD_WORK_PERIOD_TAG, "Update had error marker", err)
         }
     }
 
@@ -102,11 +107,8 @@ object Workperiods {
     }
 
     private fun constructWorkPeriods(booking: Iterable<Booking>): List<Workperiod> {
-        val (roots, references) = booking.partition {
-            it.reference == null
-        }
-
-        val referenceMap = references.groupBy { it.reference }
+        val (roots, references) = booking.partition(Booking::isRoot)
+        val referenceMap = references.groupBy(Booking::reference)
 
         return roots.mapNotNull { root ->
             assembleWorkPeriod(root, referenceMap[root.id] ?: emptyList())

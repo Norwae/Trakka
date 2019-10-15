@@ -9,20 +9,25 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.firebase.ui.auth.AuthUI
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import de.codecentric.trakka_app.model.Booking
 import de.codecentric.trakka_app.model.BookingKind
+import de.codecentric.trakka_app.ui.WorkPeriodActions
+import de.codecentric.trakka_app.ui.WorkPeriodAdapter
 import de.codecentric.trakka_app.workperiod.Workperiod
 import de.codecentric.trakka_app.workperiod.Workperiods
 import java.util.*
 
 
 const val RC_SIGN_IN = 28910
+const val company = "Foo"
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), WorkPeriodActions {
 
     private val user: FirebaseUser?
         get() = FirebaseAuth.getInstance().currentUser
@@ -31,18 +36,25 @@ class MainActivity : AppCompatActivity() {
     private val providers = arrayListOf(AuthUI.IdpConfig.EmailBuilder().build())
     private val firestore = FirebaseFirestore.getInstance()
 
-    private lateinit var listView: ListView
-
     private val collection by lazy {
         firestore.collection("users/${user?.uid}/bookings")
     }
 
+    override fun revoke(period: Workperiod) {
+        collection.add(Booking(BookingKind.RETRACTION, reference = period.rootId, company = company))
+    }
+
+    override fun edit(period: Workperiod, from: Date, to: Date) {
+        collection.add(Booking(BookingKind.CORRECTION, start = from, end = to, reference = period.rootId, company = company))
+    }
+
     private fun onToggleClicked(view: View) {
         val head = Workperiods.workperiods.firstOrNull()
+
         val booking = if (head != null && head.end == null) {
-            Booking(BookingKind.END, end = Date(), company = "Foo", reference = head.rootId)
+            Booking(BookingKind.END, end = Date(), company = company, reference = head.rootId)
         } else {
-            Booking(BookingKind.START, start = Date(), company = "Foo")
+            Booking(BookingKind.START, start = Date(), company = company)
         }
         collection.add(booking)
     }
@@ -60,12 +72,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val adapter = WorkPeriodAdapter(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        listView = findViewById(R.id.bookingList)
+        val listView = findViewById<RecyclerView>(R.id.bookingList)
+        listView.setHasFixedSize(true)
+        listView.layoutManager = LinearLayoutManager(this).apply {
+            orientation = RecyclerView.VERTICAL
+        }
+        listView.adapter = adapter
         Workperiods.listeners += {
-            listView.adapter = ArrayAdapter<Workperiod>(this, R.layout.list_contents, it)
+            adapter.updateContents(it)
         }
 
         val addButton = findViewById<Button>(R.id.addModelButton)

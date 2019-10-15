@@ -1,8 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bookingLayout"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ems="10"
+    android:enabled="false"
+    android:inputType="none" >
+
+    <EditText
+        android:enabled="false"
+        android:id="@+id/from"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ems="10"
+        android:inputType="time" />
+
+    <EditText
+        android:enabled="false"
+        android:id="@+id/to"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ems="10"
+        android:inputType="time" />
+
+    <Button
+        android:id="@+id/edit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:drawableTop="@android:drawable/ic_menu_edit" />
+
+    <Button
+        android:id="@+id/retract"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:drawableTop="@android:drawable/ic_menu_delete" />
+</LinearLayout>
+
+<!--
 <EditText xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/displayText"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:ems="10"
     android:enabled="false"
-    android:inputType="none" />
+    android:inputType="none" />-->

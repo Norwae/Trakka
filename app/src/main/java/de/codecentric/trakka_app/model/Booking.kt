@@ -18,4 +18,7 @@ data class Booking(
     var company: String = "",
     var reference: String? = null,
     @get:Exclude var id: String? = null
-)
+) {
+    val isRoot
+        @Exclude get() = reference == null
+}

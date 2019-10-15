@@ -4,5 +4,6 @@ enum class BookingKind {
     START,
     END,
     CORRECTION,
-    BLOCK
+    BLOCK,
+    RETRACTION
 }

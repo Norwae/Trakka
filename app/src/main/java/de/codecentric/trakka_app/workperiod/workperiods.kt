@@ -6,18 +6,19 @@ import com.google.firebase.firestore.QuerySnapshot
 import de.codecentric.trakka_app.model.Booking
 import de.codecentric.trakka_app.model.BookingKind
 import de.codecentric.trakka_app.model.fromDocumentSnapshot
-import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.properties.Delegates
 
+const val BUILD_WORK_PERIOD_TAG = "WP"
 typealias WorkPeriodListener = (List<Workperiod>) -> Unit
+
 object Workperiods {
     val listeners = CopyOnWriteArrayList<WorkPeriodListener>()
 
     var workperiods: List<Workperiod> by Delegates.observable(mutableListOf()) { _, _, new ->
-        listeners.forEach {
-            Log.d("WP","Invoking callback $it")
-            it.invoke(new)
+        for (l in listeners) {
+            Log.d("WP", "Invoking callback $l")
+            l.invoke(new)
         }
     }
         private set
@@ -25,51 +26,79 @@ object Workperiods {
     val updateListener = EventListener<QuerySnapshot> { value, err ->
         if (err == null) {
             val model = value!!.documents.map(::fromDocumentSnapshot)
-            Log.i("WP","Received data $model")
-            val newContents = constructWorkPeriods(model)
+            Log.i("WP", "Received data $model")
+            val newContents = constructWorkPeriods(model).sortedByDescending { it.start }
             workperiods = newContents
         }
     }
 
     private fun assembleWorkPeriod(root: Booking, related: List<Booking>): Workperiod? {
-
         val type = root.kind
+        val id = root.id
+
+
+        if (id == null) {
+            Log.e(BUILD_WORK_PERIOD_TAG, "Cannot build a workperiod out of an unsaved booking")
+            return null
+        }
 
         if (type != BookingKind.START && type != BookingKind.BLOCK) {
-            Log.e("WP", "Workperiod malformed, root booking was $type. Root=$root, references=$related")
+            Log.e(
+                BUILD_WORK_PERIOD_TAG,
+                "Workperiod malformed, root booking was $type. Root=$root, references=$related"
+            )
             return null
         }
 
-        if (root.start == null){
-            Log.e("WP","Malformed root tag, no start given")
-            return null
-        }
+        var start = root.start
+        var end = root.end
+        var corrected = false
 
-        var start: Date = root.start!!
-
-        var end = if (type == BookingKind.START) {
-            related.firstOrNull()?.takeIf { it.kind == BookingKind.END }?.end
-        } else {
-            root.end
-        }
-
-        val corrections = related.filter { it.kind == BookingKind.CORRECTION }
-        for (c in corrections) {
-            val cStart = c.start
-            val cEnd = c.end
-
-            if (cStart == null || cEnd == null) {
-                Log.e("WP","Malformed correction $c, ignored")
-            } else {
-                start = cStart
-                end  = cEnd
+        for (rel in related) {
+            when (rel.kind) {
+                BookingKind.END ->
+                    if (end == null && rel.end != null) {
+                        end = rel.end
+                    } else {
+                        Log.e(
+                            BUILD_WORK_PERIOD_TAG,
+                            "Unusuable end booking encountered (start=$start, end=$end, tag=$rel)"
+                        )
+                    }
+                BookingKind.CORRECTION ->
+                    if (rel.start == null || rel.end == null) {
+                        corrected = true
+                        start = rel.start
+                        end = rel.end
+                    } else {
+                        Log.e(
+                            BUILD_WORK_PERIOD_TAG,
+                            "Unusable correction booking encountered (start=$start, end=$end, tag=$rel)"
+                        )
+                    }
+                BookingKind.RETRACTION -> {
+                    Log.d(BUILD_WORK_PERIOD_TAG, "Retraction record encountered: $rel")
+                    return null
+                }
+                else ->
+                    Log.d(
+                        BUILD_WORK_PERIOD_TAG,
+                        "Related booking of type ${rel.kind} was encountered that is not an expected related type: $rel"
+                    )
             }
         }
 
-
-        val workperiod = Workperiod(start, end, corrections.isNotEmpty(), related)
-        Log.i("WP", "Constructed WP $workperiod from ${1 + related.size} bookings")
-        return workperiod
+        return if (start != null) {
+            Workperiod(start, end, corrected, related + root, id).also {
+                Log.i(
+                    BUILD_WORK_PERIOD_TAG,
+                    "Constructed WP $it from ${1 + related.size} bookings"
+                )
+            }
+        } else {
+            Log.e(BUILD_WORK_PERIOD_TAG, "Could not build work period, no start set")
+            null
+        }
     }
 
     private fun constructWorkPeriods(booking: Iterable<Booking>): List<Workperiod> {

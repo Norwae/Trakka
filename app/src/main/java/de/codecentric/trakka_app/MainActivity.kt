@@ -9,22 +9,14 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
 import com.firebase.ui.auth.AuthUI
-import com.firebase.ui.auth.IdpResponse
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import de.codecentric.trakka_app.model.Booking
 import de.codecentric.trakka_app.model.BookingKind
-import de.codecentric.trakka_app.model.Company
-import de.codecentric.trakka_app.model.WorkerSetup
 import de.codecentric.trakka_app.workperiod.Workperiod
 import de.codecentric.trakka_app.workperiod.Workperiods
-import kotlinx.android.synthetic.main.activity_main.*
-import java.sql.Timestamp
-import java.time.Instant
 import java.util.*
 
 
@@ -46,7 +38,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onToggleClicked(view: View) {
-        val booking = Booking(BookingKind.BLOCK, Date(), Date(), Date(), "KLdjd")
+        val head = Workperiods.workperiods.firstOrNull()
+        val booking = if (head != null && head.end == null) {
+            Booking(BookingKind.END, end = Date(), company = "Foo", reference = head.rootId)
+        } else {
+            Booking(BookingKind.START, start = Date(), company = "Foo")
+        }
         collection.add(booking)
     }
 
@@ -56,9 +53,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == RC_SIGN_IN) {
-          if (resultCode == Activity.RESULT_OK) {
-              onLoggedIn()
-          }
+            if (resultCode == Activity.RESULT_OK) {
+                onLoggedIn()
+            }
         } else super.onActivityResult(requestCode, resultCode, data)
     }
 

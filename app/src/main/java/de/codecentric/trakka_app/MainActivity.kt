@@ -17,13 +17,15 @@ import de.codecentric.trakka_app.model.Booking
 import de.codecentric.trakka_app.model.BookingKind
 import de.codecentric.trakka_app.ui.WorkPeriodActions
 import de.codecentric.trakka_app.ui.WorkPeriodAdapter
+import de.codecentric.trakka_app.ui.WorkPeriodCorrection
 import de.codecentric.trakka_app.workperiod.Workperiod
 import de.codecentric.trakka_app.workperiod.Workperiods
 import org.joda.time.Duration
 import java.util.*
 
 
-const val RC_SIGN_IN = 28910
+const val RC_SIGN_IN = 0x8378
+const val RC_EDIT_WORK_PERIOD = 0x2171
 const val company = "Foo"
 
 class MainActivity : AppCompatActivity(), WorkPeriodActions {
@@ -40,13 +42,19 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
     }
 
     private lateinit var addButton: Button
+    private var editedReference: String? = null
 
     override fun revoke(period: Workperiod) {
         collection.add(Booking(BookingKind.RETRACTION, reference = period.rootId, company = company))
     }
 
-    override fun edit(period: Workperiod, from: Date, to: Date) {
-        collection.add(Booking(BookingKind.CORRECTION, start = from, end = to, reference = period.rootId, company = company))
+    override fun edit(period: Workperiod) {
+        editedReference = period.rootId
+        val intent = Intent(this, EditPeriodActivity::class.java).apply {
+            putExtra(editedWorkPeriodKey, WorkPeriodCorrection(period.start, period.end!!))
+        }
+
+        startActivityForResult(intent, RC_EDIT_WORK_PERIOD)
     }
 
     private fun onToggleClicked(view: View) {
@@ -70,16 +78,31 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == RC_SIGN_IN) {
-            if (resultCode == Activity.RESULT_OK) {
+        Log.i("ACTIVITY", "Result: request $requestCode, result: $resultCode, data: $data")
+
+        when (requestCode) {
+            RC_EDIT_WORK_PERIOD -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    val result = data?.extras?.get(editedWorkPeriodKey) as? WorkPeriodCorrection
+                    result?.run(this::returnedFromEdit)
+                }
+                editedReference = null
+            }
+            RC_SIGN_IN -> if (resultCode == Activity.RESULT_OK) {
                 onLoggedIn()
             }
-        } else super.onActivityResult(requestCode, resultCode, data)
+            else -> super.onActivityResult(requestCode, resultCode, data)
+        }
+    }
+
+    private fun returnedFromEdit(correction: WorkPeriodCorrection) {
+        collection.add(Booking(BookingKind.CORRECTION, correction.start, correction.end, company = company, reference = editedReference))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val adapter = WorkPeriodAdapter(this)
         super.onCreate(savedInstanceState)
+
+        val adapter = WorkPeriodAdapter(this)
         setContentView(R.layout.activity_main)
 
         val listView = findViewById<RecyclerView>(R.id.bookingList)

@@ -1,29 +1,25 @@
 package de.codecentric.trakka_app.ui
 
-import android.content.res.Resources
 import android.util.Log
 import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import de.codecentric.trakka_app.R
+import de.codecentric.trakka_app.util.periodFormat
+import de.codecentric.trakka_app.util.timeFormatter
 import de.codecentric.trakka_app.workperiod.Workperiod
 import org.joda.time.Duration
-import org.joda.time.Period
-import org.joda.time.format.PeriodFormat
-import java.text.DateFormat
 import java.util.*
 
 private const val TAG = "WPViewHolder"
-private val timeFormatter = DateFormat.getTimeInstance(DateFormat.SHORT)
-private val periodFormat = PeriodFormat.wordBased()
-class WorkPeriodViewHolder(itemView: View, private val actions: WorkPeriodActions) : RecyclerView.ViewHolder(itemView) {
-    val duration: TextView = itemView.findViewById(R.id.duration)
-    val from: TextView = itemView.findViewById(R.id.startTime)
-    val to: TextView = itemView.findViewById(R.id.endTime)
-    val edit: View = itemView.findViewById(R.id.edit)
-    val retract: View = itemView.findViewById(R.id.delete)
+class WorkPeriodViewHolder(itemView: View, actions: WorkPeriodActions) : RecyclerView.ViewHolder(itemView) {
+    private val duration: TextView = itemView.findViewById(R.id.duration)
+    private val from: TextView = itemView.findViewById(R.id.startTime)
+    private val to: TextView = itemView.findViewById(R.id.endTime)
+    private val edit: View = itemView.findViewById(R.id.edit)
+    private val retract: View = itemView.findViewById(R.id.delete)
 
-    val openString = itemView.resources.getString(R.string.open_period)
+    private val openString = itemView.resources.getString(R.string.open_period)
 
     var data: Workperiod? = null
         set(value) {
@@ -32,16 +28,20 @@ class WorkPeriodViewHolder(itemView: View, private val actions: WorkPeriodAction
             duration.text = format(value?.start, value?.end)
             from.text = format(value?.start)
             to.text = format(value?.end)
+
+            edit.visibility = if (value?.end != null) View.VISIBLE else View.INVISIBLE
         }
 
     init {
+        edit.setOnClickListener(makeHandler("Starting edit", actions::edit))
+        retract.setOnClickListener(makeHandler("Starting retraction", actions::revoke))
+    }
 
-        retract.setOnClickListener {
-            val data = this.data
-            if (data != null) {
-                Log.i(TAG, "Retracting $data")
-                actions.revoke(data)
-            }
+    private fun makeHandler(msg: String, editMethod: (Workperiod) -> Unit) = View.OnClickListener {
+        val data = this.data
+        if (data != null) {
+            Log.i(TAG, msg)
+            editMethod(data)
         }
     }
 

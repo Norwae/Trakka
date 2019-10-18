@@ -71,7 +71,7 @@ object Workperiods {
                         )
                     }
                 BookingKind.CORRECTION ->
-                    if (rel.start == null || rel.end == null) {
+                    if (rel.start != null && rel.end != null) {
                         corrected = true
                         start = rel.start
                         end = rel.end
@@ -111,7 +111,7 @@ object Workperiods {
         val referenceMap = references.groupBy(Booking::reference)
 
         return roots.mapNotNull { root ->
-            assembleWorkPeriod(root, referenceMap[root.id] ?: emptyList())
+            assembleWorkPeriod(root, referenceMap[root.id]?.sortedBy(Booking::timestamp) ?: emptyList())
         }
     }
 }

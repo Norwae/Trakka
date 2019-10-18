@@ -5,5 +5,5 @@ import java.util.*
 
 interface WorkPeriodActions {
     fun revoke(period: Workperiod)
-    fun edit(period: Workperiod, from: Date, to: Date)
+    fun edit(period: Workperiod)
 }

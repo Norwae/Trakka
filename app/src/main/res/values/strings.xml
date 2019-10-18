@@ -3,4 +3,8 @@
     <string name="toggle_on">Start</string>
     <string name="open_period">Noch offen</string>
     <string name="toggle_off">Ende</string>
+    <string name="update_period_title">Arbeitszeit aktualisieren</string>
+    <string name="startLabel">Start:</string>
+    <string name="endLabel" >Ende:</string>
+    <string name="dateLabel">Datum:</string>
 </resources>

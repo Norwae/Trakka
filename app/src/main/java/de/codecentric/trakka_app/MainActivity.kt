@@ -5,9 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,6 +19,7 @@ import de.codecentric.trakka_app.ui.WorkPeriodActions
 import de.codecentric.trakka_app.ui.WorkPeriodAdapter
 import de.codecentric.trakka_app.workperiod.Workperiod
 import de.codecentric.trakka_app.workperiod.Workperiods
+import org.joda.time.Duration
 import java.util.*
 
 
@@ -40,6 +39,8 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
         firestore.collection("users/${user?.uid}/bookings")
     }
 
+    private lateinit var addButton: Button
+
     override fun revoke(period: Workperiod) {
         collection.add(Booking(BookingKind.RETRACTION, reference = period.rootId, company = company))
     }
@@ -50,11 +51,16 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
 
     private fun onToggleClicked(view: View) {
         val head = Workperiods.workperiods.firstOrNull()
+        val now = Date()
 
         val booking = if (head != null && head.end == null) {
-            Booking(BookingKind.END, end = Date(), company = company, reference = head.rootId)
+            if (Duration(head.start.time, now.time).standardMinutes < 1) {
+                Booking(BookingKind.RETRACTION, company = company, reference = head.rootId)
+            } else {
+                Booking(BookingKind.END, end = now, company = company, reference = head.rootId)
+            }
         } else {
-            Booking(BookingKind.START, start = Date(), company = company)
+            Booking(BookingKind.START, start = now, company = company)
         }
         collection.add(booking)
     }
@@ -84,10 +90,12 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
         listView.adapter = adapter
         Workperiods.listeners += {
             adapter.updateContents(it)
+            addButton.text = determineToggleLabel(it)
         }
 
-        val addButton = findViewById<Button>(R.id.addModelButton)
+        addButton = findViewById<Button>(R.id.toggleButton)
         addButton.setOnClickListener(this::onToggleClicked)
+
 
         if (user == null) {
             Log.i("INIT", "Performing login")
@@ -104,5 +112,11 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
         }
 
     }
+
+    private fun determineToggleLabel(it: List<Workperiod>) =
+        resources.getText(
+            if (it.firstOrNull()?.end != null) R.string.toggle_on
+            else R.string.toggle_off
+        )
 
 }

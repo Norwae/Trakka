@@ -5,7 +5,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import de.codecentric.trakka_app.R
-import de.codecentric.trakka_app.util.periodFormat
+import de.codecentric.trakka_app.util.periodFormater
 import de.codecentric.trakka_app.util.timeFormatter
 import de.codecentric.trakka_app.workperiod.Workperiod
 import org.joda.time.Duration
@@ -53,7 +53,7 @@ class WorkPeriodViewHolder(itemView: View, actions: WorkPeriodActions) : Recycle
                     withMillis(0).
                     withSeconds(0)
 
-                return periodFormat.print(period)
+                return periodFormater(period)
             } else openString
         } else ""
     }

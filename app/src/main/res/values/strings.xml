@@ -7,4 +7,6 @@
     <string name="startLabel">Start:</string>
     <string name="endLabel" >Ende:</string>
     <string name="dateLabel">Datum:</string>
+    <string name="new_block">Anlegen</string>
+    <string name="settings">Einstellungen</string>
 </resources>

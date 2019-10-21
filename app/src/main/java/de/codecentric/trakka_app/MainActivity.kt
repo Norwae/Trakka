@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +28,7 @@ import java.util.*
 
 const val RC_SIGN_IN = 0x8378
 const val RC_EDIT_WORK_PERIOD = 0x2171
+const val RC_EDIT_NEW_PERIOD = 0x2170
 const val company = "Foo"
 
 class MainActivity : AppCompatActivity(), WorkPeriodActions {
@@ -46,6 +49,16 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
 
     override fun revoke(period: Workperiod) {
         collection.add(Booking(BookingKind.RETRACTION, reference = period.rootId, company = company))
+    }
+
+    private fun new() {
+        editedReference = null
+        val intent = Intent(this, EditPeriodActivity::class.java).apply {
+            val now = Date()
+            putExtra(editedWorkPeriodKey, WorkPeriodCorrection(now, now))
+        }
+
+        startActivityForResult(intent, RC_EDIT_NEW_PERIOD)
     }
 
     override fun edit(period: Workperiod) {
@@ -79,15 +92,19 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         Log.i("ACTIVITY", "Result: request $requestCode, result: $resultCode, data: $data")
+        fun handleEditResult(bookingKind: BookingKind) {
+            if (resultCode == Activity.RESULT_OK) {
+                val result = data?.extras?.get(editedWorkPeriodKey) as? WorkPeriodCorrection
+                result?.let {
+                    returnedFromEdit(it, bookingKind)
+                }
+            }
+            editedReference = null
+        }
 
         when (requestCode) {
-            RC_EDIT_WORK_PERIOD -> {
-                if (resultCode == Activity.RESULT_OK) {
-                    val result = data?.extras?.get(editedWorkPeriodKey) as? WorkPeriodCorrection
-                    result?.run(this::returnedFromEdit)
-                }
-                editedReference = null
-            }
+            RC_EDIT_NEW_PERIOD -> handleEditResult(BookingKind.BLOCK)
+            RC_EDIT_WORK_PERIOD -> handleEditResult(BookingKind.CORRECTION)
             RC_SIGN_IN -> if (resultCode == Activity.RESULT_OK) {
                 onLoggedIn()
             }
@@ -95,8 +112,26 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
         }
     }
 
-    private fun returnedFromEdit(correction: WorkPeriodCorrection) {
-        collection.add(Booking(BookingKind.CORRECTION, correction.start, correction.end, company = company, reference = editedReference))
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        return when (item?.itemId) {
+            R.id.action_new -> {
+                new()
+                true
+            }
+            R.id.action_settings -> {
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun returnedFromEdit(correction: WorkPeriodCorrection, kind: BookingKind) {
+        collection.add(Booking(kind, correction.start, correction.end, company = company, reference = editedReference))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

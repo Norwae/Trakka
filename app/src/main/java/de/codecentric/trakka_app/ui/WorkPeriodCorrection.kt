@@ -6,7 +6,8 @@ import java.util.*
 
 data class WorkPeriodCorrection(val start: Date, val end: Date): Parcelable {
     companion object {
-        @JvmField val CREATOR = object: Parcelable.Creator<WorkPeriodCorrection> {
+        @Suppress("unused") @JvmField
+        val CREATOR = object: Parcelable.Creator<WorkPeriodCorrection> {
             override fun newArray(size: Int): Array<WorkPeriodCorrection?> = arrayOfNulls(size)
 
             override fun createFromParcel(source: Parcel): WorkPeriodCorrection = WorkPeriodCorrection(

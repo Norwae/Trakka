@@ -15,17 +15,15 @@ import com.firebase.ui.auth.AuthUI
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
-import de.codecentric.trakka_app.model.Booking
-import de.codecentric.trakka_app.model.BookingKind
-import de.codecentric.trakka_app.model.CompanyMembership
-import de.codecentric.trakka_app.model.CompanySelectorModel
+import de.codecentric.trakka_app.model.*
 import de.codecentric.trakka_app.ui.WorkPeriodActions
 import de.codecentric.trakka_app.ui.WorkPeriodAdapter
 import de.codecentric.trakka_app.ui.WorkPeriodCorrection
+import de.codecentric.trakka_app.workperiod.WorkPeriodListener
 import de.codecentric.trakka_app.workperiod.Workperiod
 import de.codecentric.trakka_app.workperiod.Workperiods
+import org.joda.time.DateTime
 import org.joda.time.Duration
-import java.util.*
 
 
 const val RC_SIGN_IN = 0x8378
@@ -42,35 +40,36 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
     private val firestore = FirebaseFirestore.getInstance()
 
     private var companyModel: CompanySelectorModel? = null
-    private val company: String?
-        get() = companyModel?.currentCompany?.id
-
-    private val bookings by lazy {
-        firestore.collection("users/${user?.uid}/bookings")
-    }
+    private var bookingModel: BookingModel? = null
 
 
-    
     private lateinit var addButton: Button
     private var editedReference: String? = null
 
-    override fun revoke(period: Workperiod) {
-        company?.let {
-            bookings.add(Booking(BookingKind.RETRACTION, reference = period.rootId, company = it))
+    override fun revoke(reference: String) {
+        bookingModel?.revoke(reference)
+    }
+
+    override fun correct(reference: String, start: DateTime, end: DateTime) {
+        editedReference = reference
+        val intent = Intent(this, EditPeriodActivity::class.java).apply {
+            putExtra(editedWorkPeriodKey, WorkPeriodCorrection(start, end))
         }
+
+        startActivityForResult(intent, RC_EDIT_NEW_PERIOD)
     }
 
     private fun new() {
         editedReference = null
         val intent = Intent(this, EditPeriodActivity::class.java).apply {
-            val now = Date()
+            val now = DateTime.now()
             putExtra(editedWorkPeriodKey, WorkPeriodCorrection(now, now))
         }
 
         startActivityForResult(intent, RC_EDIT_NEW_PERIOD)
     }
 
-    override fun edit(period: Workperiod) {
+    fun edit(period: Workperiod) {
         editedReference = period.rootId
         val intent = Intent(this, EditPeriodActivity::class.java).apply {
             putExtra(editedWorkPeriodKey, WorkPeriodCorrection(period.start, period.end!!))
@@ -80,46 +79,48 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
     }
 
     private fun onToggleClicked(view: View) {
-        company?.let { company ->
-            val head = Workperiods.workperiods.firstOrNull()
-            val now = Date()
+        val head = Workperiods.workperiods.firstOrNull()
+        val now = DateTime()
 
-            val booking = if (head != null && head.end == null) {
-                if (Duration(head.start.time, now.time).standardMinutes < 1) {
-                    Booking(BookingKind.RETRACTION, company = company, reference = head.rootId)
-                } else {
-                    Booking(BookingKind.END, end = now, company = company, reference = head.rootId)
-                }
+        if (head != null && head.end == null) {
+            if (Duration(head.start, now).standardMinutes < 1) {
+                bookingModel?.revoke(head.rootId)
             } else {
-                Booking(BookingKind.START, start = now, company = company)
+                bookingModel?.end(head.rootId)
             }
-            bookings.add(booking)
-
+        } else {
+            bookingModel?.start()
         }
     }
 
 
     private fun onLoggedIn() {
-        companyModel = CompanySelectorModel(firestore, user!!.uid)
-
-        bookings.addSnapshotListener(Workperiods.updateListener)
+        val userId = user!!.uid
+        val company = CompanySelectorModel(firestore, this, userId)
+        companyModel = company
+        val booking = BookingModel(firestore, this, userId)
+        booking.listeners += Workperiods
+        booking.onCompanyChanged(NoCompany)
+        company.addCompanyChangeListener(booking)
+        bookingModel = booking
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         Log.i("ACTIVITY", "Result: request $requestCode, result: $resultCode, data: $data")
-        fun handleEditResult(bookingKind: BookingKind) {
-            if (resultCode == Activity.RESULT_OK) {
-                val result = data?.extras?.get(editedWorkPeriodKey) as? WorkPeriodCorrection
-                result?.let {
-                    returnedFromEdit(it, bookingKind)
-                }
-            }
-            editedReference = null
-        }
 
         when (requestCode) {
-            RC_EDIT_NEW_PERIOD -> handleEditResult(BookingKind.BLOCK)
-            RC_EDIT_WORK_PERIOD -> handleEditResult(BookingKind.CORRECTION)
+            RC_EDIT_NEW_PERIOD -> {
+                val result = data?.extras?.get(editedWorkPeriodKey) as? WorkPeriodCorrection
+                result?.let {
+                    bookingModel?.block(it.start, it.end)
+                }
+            }
+            RC_EDIT_WORK_PERIOD -> {
+                val result = data?.extras?.get(editedWorkPeriodKey) as? WorkPeriodCorrection
+                result?.let {
+                    bookingModel?.correct(editedReference!!, it.start, it.end)
+                }
+            }
             RC_SIGN_IN -> if (resultCode == Activity.RESULT_OK) {
                 onLoggedIn()
             }
@@ -145,11 +146,6 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
         }
     }
 
-    private fun returnedFromEdit(correction: WorkPeriodCorrection, kind: BookingKind) {
-        company?.let {
-            bookings.add(Booking(kind, correction.start, correction.end, company = it, reference = editedReference))
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -163,10 +159,13 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
             orientation = RecyclerView.VERTICAL
         }
         listView.adapter = adapter
-        Workperiods.listeners += {
-            adapter.updateContents(it)
-            addButton.text = determineToggleLabel(it)
-        }
+
+        Workperiods.listeners += (object: WorkPeriodListener{
+            override fun onWorkPeriodsChanged(list: List<Workperiod>) {
+                adapter.updateContents(list)
+                addButton.text = determineToggleLabel(list)
+            }
+        })
 
         addButton = findViewById(R.id.toggleButton)
         addButton.setOnClickListener(this::onToggleClicked)
@@ -190,7 +189,7 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
 
     private fun determineToggleLabel(it: List<Workperiod>) =
         resources.getText(
-            if (it.firstOrNull()?.end != null) R.string.toggle_on
+            if (it.isEmpty() || it.first().end != null) R.string.toggle_on
             else R.string.toggle_off
         )
 

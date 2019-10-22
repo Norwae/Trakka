@@ -8,6 +8,7 @@ import de.codecentric.trakka_app.R
 import de.codecentric.trakka_app.util.periodFormater
 import de.codecentric.trakka_app.util.timeFormatter
 import de.codecentric.trakka_app.workperiod.Workperiod
+import org.joda.time.DateTime
 import org.joda.time.Duration
 import java.util.*
 
@@ -33,8 +34,12 @@ class WorkPeriodViewHolder(itemView: View, actions: WorkPeriodActions) : Recycle
         }
 
     init {
-        edit.setOnClickListener(makeHandler("Starting edit", actions::edit))
-        retract.setOnClickListener(makeHandler("Starting retraction", actions::revoke))
+        edit.setOnClickListener(makeHandler("Starting edit"){
+            actions.correct(it.rootId, it.start, it.end!!)
+        })
+        retract.setOnClickListener(makeHandler("Starting retraction") {
+            actions.revoke(it.rootId)
+        })
     }
 
     private fun makeHandler(msg: String, editMethod: (Workperiod) -> Unit) = View.OnClickListener {
@@ -45,10 +50,10 @@ class WorkPeriodViewHolder(itemView: View, actions: WorkPeriodActions) : Recycle
         }
     }
 
-    private fun format(start: Date?, end: Date?): String {
+    private fun format(start: DateTime?, end: DateTime?): String {
         return if (start != null) {
             if (end != null) {
-                val period = Duration(start.time, end.time).
+                val period = Duration(start, end).
                     toPeriod().
                     withMillis(0).
                     withSeconds(0)
@@ -58,7 +63,7 @@ class WorkPeriodViewHolder(itemView: View, actions: WorkPeriodActions) : Recycle
         } else ""
     }
 
-    private fun format(date: Date?): String {
-        return if (date == null) "" else timeFormatter.format(date)
+    private fun format(date: DateTime?): String {
+        return if (date == null) "" else timeFormatter.print(date)
     }
 }

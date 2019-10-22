@@ -11,6 +11,7 @@ import androidx.fragment.app.FragmentActivity
 import de.codecentric.trakka_app.ui.TextualCalendarFragment
 import de.codecentric.trakka_app.ui.WorkPeriodCorrection
 import kotlinx.android.synthetic.main.edit_period.*
+import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.joda.time.LocalDateTime
 
@@ -57,18 +58,18 @@ class EditPeriodActivity : AppCompatActivity() {
         setResult(Activity.RESULT_OK, Intent().apply {
             val value = date.currentValue
             if (value != null) {
-                val start = LocalDateTime(
+                val start = DateTime(
                     value.year, value.monthOfYear, value.dayOfMonth,
                     startView.currentHour, startView.currentMinute
                 )
-                val end = LocalDateTime(
+                val end = DateTime(
                     value.year, value.monthOfYear, value.dayOfMonth,
                     endView.currentHour, endView.currentMinute
                 )
                 putExtra(
                     editedWorkPeriodKey, WorkPeriodCorrection(
-                        start.toDate(),
-                        end.toDate()
+                        start,
+                        end
                     )
                 )
             }

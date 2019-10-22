@@ -1,39 +1,28 @@
 package de.codecentric.trakka_app.workperiod
 
 import android.util.Log
-import com.google.firebase.firestore.EventListener
-import com.google.firebase.firestore.QuerySnapshot
 import de.codecentric.trakka_app.model.Booking
 import de.codecentric.trakka_app.model.BookingKind
-import de.codecentric.trakka_app.model.fromDocumentSnapshot
+import de.codecentric.trakka_app.model.BookingSetChangedListener
+import org.joda.time.DateTime
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.properties.Delegates
 
 const val BUILD_WORK_PERIOD_TAG = "WorkPeriod"
-typealias WorkPeriodListener = (List<Workperiod>) -> Unit
 
-object Workperiods {
+interface WorkPeriodListener {
+    fun onWorkPeriodsChanged(list: List<Workperiod>)
+}
+
+object Workperiods : BookingSetChangedListener {
     val listeners = CopyOnWriteArrayList<WorkPeriodListener>()
-
-    var workperiods: List<Workperiod> by Delegates.observable(mutableListOf()) { _, _, new ->
-        for (listener in listeners) {
-            Log.d(
-                BUILD_WORK_PERIOD_TAG,
-                "Invoking callback ${listener::class} with ${new.size} records"
-            )
-            listener.invoke(new)
-        }
-    }
+    var workperiods: List<Workperiod> = emptyList()
         private set
 
-    val updateListener = EventListener<QuerySnapshot> { value, err ->
-        if (err == null) {
-            val model = value!!.documents.map(::fromDocumentSnapshot)
-            Log.i("WP", "Received data (${model.size} records)")
-            val newContents = constructWorkPeriods(model).sortedByDescending { it.start }
-            workperiods = newContents
-        } else {
-            Log.e(BUILD_WORK_PERIOD_TAG, "Update had error marker", err)
+    override fun onBookingSetChanged(bookings: List<Booking>) {
+        val newValue = constructWorkPeriods(bookings)
+        workperiods = newValue
+        for (l in listeners) {
+            l.onWorkPeriodsChanged(newValue)
         }
     }
 
@@ -94,7 +83,7 @@ object Workperiods {
         }
 
         return if (start != null) {
-            Workperiod(start, end, corrected, related + root, id).also {
+            Workperiod(DateTime(start), end?.let{ DateTime(it) }, corrected, related + root, id).also {
                 Log.i(
                     BUILD_WORK_PERIOD_TAG,
                     "Constructed WP $it from ${1 + related.size} bookings"

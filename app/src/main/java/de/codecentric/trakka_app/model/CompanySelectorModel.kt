@@ -1,30 +1,56 @@
 package de.codecentric.trakka_app.model
 
+import android.app.Activity
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.*
+import java.util.concurrent.CopyOnWriteArraySet
+
+interface CompanyChangeListener : EventListener {
+    fun onCompanyChanged(company: CompanyMembership)
+}
 
 class CompanySelectorModel(
-    private val firebase: FirebaseFirestore,
+    firebase: FirebaseFirestore,
+    owner: Activity,
     userId: String) {
 
     private var workerSetup: WorkerSetup? = null
     private var memberships: List<CompanyMembership>? = null
 
-    val currentCompany: CompanyMembership
+    private val listeners = CopyOnWriteArraySet<CompanyChangeListener>()
+
+    fun addCompanyChangeListener(listener: CompanyChangeListener) {
+        listeners += listener
+    }
+
+    var currentCompany: CompanyMembership
         get() {
             return memberships?.find {
                 it.id == workerSetup?.preferredCompany
-            } ?: memberships?.firstOrNull() ?: CompanyMembership("-1", "<No Company>")
+            } ?: memberships?.firstOrNull() ?: NoCompany
+        }
+        set(value) {
+            workerSetup?.let {
+                it.preferredCompany = value.id
+            }
         }
 
 
     init {
-        firebase.document("/users/${userId}").addSnapshotListener { user, err ->
+        firebase.document("/users/${userId}").addSnapshotListener(owner) { user, err ->
             if (err == null && user != null) {
-                workerSetup = user.toObject(WorkerSetup::class.java)!!
+                val oldId = workerSetup?.preferredCompany
+                workerSetup = user.toObject(WorkerSetup::class.java) ?: WorkerSetup()
+
+                if (workerSetup?.preferredCompany != oldId) {
+                    for (l in listeners) {
+                        l.onCompanyChanged(currentCompany)
+                    }
+                }
             }
         }
 
-        firebase.collection("/users/${userId}/memberships").addSnapshotListener { member, err ->
+        firebase.collection("/users/${userId}/memberships").addSnapshotListener(owner) { member, err ->
             if (err == null && member != null) {
                 memberships = member.toObjects(CompanyMembership::class.java)
             }

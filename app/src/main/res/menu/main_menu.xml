@@ -10,5 +10,6 @@
         android:id="@+id/action_settings"
         android:icon="@android:drawable/ic_menu_manage"
         android:title="@string/settings"
+        app:showAsAction="ifRoom"
         />
 </menu>

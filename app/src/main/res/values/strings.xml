@@ -9,4 +9,5 @@
     <string name="dateLabel">Datum:</string>
     <string name="new_block">Anlegen</string>
     <string name="settings">Einstellungen</string>
+    <string name="open_calendar">Kalender öffnen</string>
 </resources>

@@ -17,6 +17,8 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import de.codecentric.trakka_app.model.Booking
 import de.codecentric.trakka_app.model.BookingKind
+import de.codecentric.trakka_app.model.CompanyMembership
+import de.codecentric.trakka_app.model.CompanySelectorModel
 import de.codecentric.trakka_app.ui.WorkPeriodActions
 import de.codecentric.trakka_app.ui.WorkPeriodAdapter
 import de.codecentric.trakka_app.ui.WorkPeriodCorrection
@@ -29,7 +31,6 @@ import java.util.*
 const val RC_SIGN_IN = 0x8378
 const val RC_EDIT_WORK_PERIOD = 0x2171
 const val RC_EDIT_NEW_PERIOD = 0x2170
-const val company = "Foo"
 
 class MainActivity : AppCompatActivity(), WorkPeriodActions {
 
@@ -40,15 +41,23 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
     private val providers = arrayListOf(AuthUI.IdpConfig.EmailBuilder().build())
     private val firestore = FirebaseFirestore.getInstance()
 
-    private val collection by lazy {
+    private var companyModel: CompanySelectorModel? = null
+    private val company: String?
+        get() = companyModel?.currentCompany?.id
+
+    private val bookings by lazy {
         firestore.collection("users/${user?.uid}/bookings")
     }
 
+
+    
     private lateinit var addButton: Button
     private var editedReference: String? = null
 
     override fun revoke(period: Workperiod) {
-        collection.add(Booking(BookingKind.RETRACTION, reference = period.rootId, company = company))
+        company?.let {
+            bookings.add(Booking(BookingKind.RETRACTION, reference = period.rootId, company = it))
+        }
     }
 
     private fun new() {
@@ -71,23 +80,29 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
     }
 
     private fun onToggleClicked(view: View) {
-        val head = Workperiods.workperiods.firstOrNull()
-        val now = Date()
+        company?.let { company ->
+            val head = Workperiods.workperiods.firstOrNull()
+            val now = Date()
 
-        val booking = if (head != null && head.end == null) {
-            if (Duration(head.start.time, now.time).standardMinutes < 1) {
-                Booking(BookingKind.RETRACTION, company = company, reference = head.rootId)
+            val booking = if (head != null && head.end == null) {
+                if (Duration(head.start.time, now.time).standardMinutes < 1) {
+                    Booking(BookingKind.RETRACTION, company = company, reference = head.rootId)
+                } else {
+                    Booking(BookingKind.END, end = now, company = company, reference = head.rootId)
+                }
             } else {
-                Booking(BookingKind.END, end = now, company = company, reference = head.rootId)
+                Booking(BookingKind.START, start = now, company = company)
             }
-        } else {
-            Booking(BookingKind.START, start = now, company = company)
+            bookings.add(booking)
+
         }
-        collection.add(booking)
     }
 
+
     private fun onLoggedIn() {
-        collection.addSnapshotListener(Workperiods.updateListener)
+        companyModel = CompanySelectorModel(firestore, user!!.uid)
+
+        bookings.addSnapshotListener(Workperiods.updateListener)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -131,7 +146,9 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
     }
 
     private fun returnedFromEdit(correction: WorkPeriodCorrection, kind: BookingKind) {
-        collection.add(Booking(kind, correction.start, correction.end, company = company, reference = editedReference))
+        company?.let {
+            bookings.add(Booking(kind, correction.start, correction.end, company = it, reference = editedReference))
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -151,7 +168,7 @@ class MainActivity : AppCompatActivity(), WorkPeriodActions {
             addButton.text = determineToggleLabel(it)
         }
 
-        addButton = findViewById<Button>(R.id.toggleButton)
+        addButton = findViewById(R.id.toggleButton)
         addButton.setOnClickListener(this::onToggleClicked)
 
 

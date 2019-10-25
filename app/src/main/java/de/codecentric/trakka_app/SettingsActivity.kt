@@ -33,12 +33,12 @@ class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings)
-
-        val idx = CompanySelector.allCompanies.indexOf(CompanySelector.currentCompany)
+        val allCompanies = CompanySelector.allCompanies
 
         spinner = findViewById(R.id.spinner)
 
-        spinner.adapter = CompanySelectAdapter(this@SettingsActivity, CompanySelector.allCompanies)
+        spinner.adapter = CompanySelectAdapter(this, allCompanies)
+        val idx = allCompanies.indexOf(CompanySelector.currentCompany)
         spinner.setSelection(idx)
     }
 }

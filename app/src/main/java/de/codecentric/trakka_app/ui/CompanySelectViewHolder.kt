@@ -7,6 +7,7 @@ import android.widget.TextView
 import de.codecentric.trakka_app.R
 import de.codecentric.trakka_app.model.CompanyMembership
 import de.codecentric.trakka_app.model.CompanyMembership.Companion.NoCompany
+import de.codecentric.trakka_app.util.setImageFromURI
 
 
 class CompanySelectViewHolder(val view: View) {
@@ -18,7 +19,7 @@ class CompanySelectViewHolder(val view: View) {
             field = value
             value.logoURL?.let {
                 runCatching {
-                    image.setImageURI(Uri.parse(it))
+                    image.setImageFromURI(Uri.parse(it))
                 }
             }
             text.text = value.friendlyName

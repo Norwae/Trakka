@@ -18,20 +18,20 @@ import de.codecentric.trakka_app.ui.WorkPeriodCorrection
 import org.joda.time.DateTime
 import org.joda.time.Duration
 
+private const val RC_SIGN_IN = 0x8378
+private const val RC_EDIT_WORK_PERIOD = 0x2171
+private const val RC_EDIT_NEW_PERIOD = 0x2170
+private const val RC_SETTINGS = 0x2172
 
-const val RC_SIGN_IN = 0x8378
-const val RC_EDIT_WORK_PERIOD = 0x2171
-const val RC_EDIT_NEW_PERIOD = 0x2170
-const val RC_SETTINGS = 0x2172
-
-private val firebaseAuthProviders = arrayListOf(AuthUI.IdpConfig.EmailBuilder().build())
+private const val INIT_TAG = "INIT"
 
 class MainActivity : AppCompatActivity() {
 
+    private val firebaseAuthProviders = arrayListOf(AuthUI.IdpConfig.EmailBuilder().build())
     private var editedReference: String? = null
 
     private fun onToggleClicked(view: View) {
-        val head = Workperiods.workperiods.firstOrNull()
+        val head = WorkPeriods.workperiods.firstOrNull()
         val now = DateTime()
 
         if (head != null && head.end == null) {
@@ -47,11 +47,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun initModel() {
         val result = initialize {
-            Log.i("INIT", "Completed initial refresh")
+            Log.i(INIT_TAG, "Completed initial refresh")
         }
 
         if (result == InitState.NeedsAuthentication) {
-            Log.i("INIT", "Performing login")
+            Log.i(INIT_TAG, "Performing login")
             startActivityForResult(
                 AuthUI.getInstance()
                     .createSignInIntentBuilder()
@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity() {
                 RC_SIGN_IN
             )
         } else {
-            Log.d("INIT", "Already authenticated")
+            Log.d(INIT_TAG, "Already authenticated")
         }
     }
 
@@ -72,7 +72,6 @@ class MainActivity : AppCompatActivity() {
                     Bookings.block(it.start, it.end)
                 }
             }
-            RC_SETTINGS -> Unit // Nothing
             RC_EDIT_WORK_PERIOD -> {
                 val result = data?.extras?.get(editedWorkPeriodKey) as? WorkPeriodCorrection
                 result?.let {
@@ -111,6 +110,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
         val adapter = WorkPeriodAdapter(object : WorkPeriodActions {
             override fun correct(reference: String, start: DateTime, end: DateTime) {
@@ -119,11 +119,9 @@ class MainActivity : AppCompatActivity() {
                     putExtra(editedWorkPeriodKey, WorkPeriodCorrection(start, end))
                 }
 
-                startActivityForResult(intent, RC_EDIT_NEW_PERIOD)
+                startActivityForResult(intent, RC_EDIT_WORK_PERIOD)
             }
-
         })
-        setContentView(R.layout.activity_main)
 
         val listView = findViewById<RecyclerView>(R.id.bookingList)
         listView.setHasFixedSize(true)
@@ -135,7 +133,7 @@ class MainActivity : AppCompatActivity() {
         val addButton = findViewById<Button>(R.id.toggleButton)
         addButton.setOnClickListener(this::onToggleClicked)
 
-        Workperiods.listeners += (object : UpdateListener<List<Workperiod>> {
+        WorkPeriods.listeners += (object : UpdateListener<List<Workperiod>> {
             override fun onUpdated(oldValue: List<Workperiod>, newValue: List<Workperiod>) {
                 adapter.updateContents(newValue)
                 addButton.text = resources.getText(
@@ -144,7 +142,6 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         })
-
 
         initModel()
     }

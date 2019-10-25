@@ -4,11 +4,8 @@ import android.util.Log
 import com.google.firebase.firestore.DocumentReference
 import java.util.concurrent.CopyOnWriteArraySet
 
-private const val currentCompanyField = "currentCompany"
-
 object CompanySelector {
-    val companySelectionChangeListeners =
-        CopyOnWriteArraySet<UpdateListener<List<CompanyMembership>>>()
+    private const val currentCompanyField = "currentCompany"
 
     val companyChangeListeners =
         CopyOnWriteArraySet<UpdateListener<CompanyMembership>>()
@@ -16,7 +13,7 @@ object CompanySelector {
     var currentCompany by UpdateDispatcher(CompanyMembership.NoCompany, companyChangeListeners)
         private set
 
-    var allCompanies by UpdateDispatcher(emptyList(), companySelectionChangeListeners)
+    var allCompanies = emptyList<CompanyMembership>()
         private set
 
     private var selectedId = ""

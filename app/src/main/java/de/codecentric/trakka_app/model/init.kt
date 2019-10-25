@@ -1,5 +1,6 @@
 package de.codecentric.trakka_app.model
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -14,6 +15,7 @@ internal val firestore: FirebaseFirestore
     get() = FirebaseFirestore.getInstance()
 
 fun initialize(onCompleteListener: () -> Unit): InitState {
+    Log.i(TAG, "Initializing model")
     val user = FirebaseAuth.getInstance().currentUser
     if (user == null) {
         return InitState.NeedsAuthentication
@@ -21,13 +23,13 @@ fun initialize(onCompleteListener: () -> Unit): InitState {
         CompanySelector.init(user.uid)
         Bookings.init(user.uid)
 
-        Workperiods.listeners += object : UpdateListener<List<Workperiod>> {
+        WorkPeriods.listeners += object : UpdateListener<List<Workperiod>> {
             override fun onUpdated(oldValue: List<Workperiod>, newValue: List<Workperiod>) {
-                Workperiods.listeners -= this
+                WorkPeriods.listeners -= this
                 onCompleteListener()
             }
         }
-        Workperiods.init()
+        WorkPeriods.init()
     }
 
     return InitState.Initializing

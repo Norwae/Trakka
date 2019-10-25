@@ -4,9 +4,8 @@ import android.util.Log
 import org.joda.time.DateTime
 import java.util.concurrent.CopyOnWriteArraySet
 
-const val BUILD_WORK_PERIOD_TAG = "WorkPeriod"
-
-object Workperiods {
+object WorkPeriods {
+    const val BUILD_WORK_PERIOD_TAG = "WorkPeriod"
     val listeners = CopyOnWriteArraySet<UpdateListener<List<Workperiod>>>()
     var workperiods by UpdateDispatcher(emptyList(), listeners)
 

@@ -4,7 +4,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import de.codecentric.trakka_app.R
-import de.codecentric.trakka_app.workperiod.Workperiod
+import de.codecentric.trakka_app.model.Workperiod
 
 class WorkPeriodAdapter(private val actions: WorkPeriodActions) : RecyclerView.Adapter<WorkPeriodViewHolder>() {
     private var model = mutableListOf<Workperiod>()

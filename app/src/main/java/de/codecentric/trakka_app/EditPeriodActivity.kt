@@ -7,12 +7,10 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.TimePicker
 import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.FragmentActivity
 import de.codecentric.trakka_app.ui.TextualCalendarFragment
 import de.codecentric.trakka_app.ui.WorkPeriodCorrection
 import kotlinx.android.synthetic.main.edit_period.*
 import org.joda.time.DateTime
-import org.joda.time.LocalDate
 import org.joda.time.LocalDateTime
 
 const val editedWorkPeriodKey = "EditedWorkPeriod"
@@ -23,7 +21,7 @@ class EditPeriodActivity : AppCompatActivity() {
     private lateinit var endView: TimePicker
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.edit_period_menu, menu)
+        menuInflater.inflate(R.menu.save_editor_menu, menu)
 
         return super.onCreateOptionsMenu(menu)
     }

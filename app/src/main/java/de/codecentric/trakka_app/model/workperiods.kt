@@ -1,30 +1,23 @@
-package de.codecentric.trakka_app.workperiod
+package de.codecentric.trakka_app.model
 
 import android.util.Log
-import de.codecentric.trakka_app.model.Booking
-import de.codecentric.trakka_app.model.BookingKind
-import de.codecentric.trakka_app.model.BookingSetChangedListener
 import org.joda.time.DateTime
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CopyOnWriteArraySet
 
 const val BUILD_WORK_PERIOD_TAG = "WorkPeriod"
 
-interface WorkPeriodListener {
-    fun onWorkPeriodsChanged(list: List<Workperiod>)
-}
+object Workperiods {
+    val listeners = CopyOnWriteArraySet<UpdateListener<List<Workperiod>>>()
+    var workperiods by UpdateDispatcher(emptyList(), listeners)
 
-object Workperiods : BookingSetChangedListener {
-    val listeners = CopyOnWriteArrayList<WorkPeriodListener>()
-    var workperiods: List<Workperiod> = emptyList()
-        private set
-
-    override fun onBookingSetChanged(bookings: List<Booking>) {
-        val newValue = constructWorkPeriods(bookings)
-        workperiods = newValue
-        for (l in listeners) {
-            l.onWorkPeriodsChanged(newValue)
+    fun init() {
+        Bookings.bookingListeners += object: UpdateListener<List<Booking>> {
+            override fun onUpdated(oldValue: List<Booking>, newValue: List<Booking>) {
+                workperiods = constructWorkPeriods(newValue)
+            }
         }
     }
+
 
     private fun assembleWorkPeriod(root: Booking, related: List<Booking>): Workperiod? {
         val type = root.kind
@@ -83,7 +76,13 @@ object Workperiods : BookingSetChangedListener {
         }
 
         return if (start != null) {
-            Workperiod(DateTime(start), end?.let{ DateTime(it) }, corrected, related + root, id).also {
+            Workperiod(
+                DateTime(start),
+                end?.let { DateTime(it) },
+                corrected,
+                related + root,
+                id
+            ).also {
                 Log.i(
                     BUILD_WORK_PERIOD_TAG,
                     "Constructed WP $it from ${1 + related.size} bookings"
@@ -100,7 +99,10 @@ object Workperiods : BookingSetChangedListener {
         val referenceMap = references.groupBy(Booking::reference)
 
         return roots.mapNotNull { root ->
-            assembleWorkPeriod(root, referenceMap[root.id]?.sortedBy(Booking::timestamp) ?: emptyList())
+            assembleWorkPeriod(
+                root,
+                referenceMap[root.id]?.sortedBy(Booking::timestamp) ?: emptyList()
+            )
         }
     }
 }

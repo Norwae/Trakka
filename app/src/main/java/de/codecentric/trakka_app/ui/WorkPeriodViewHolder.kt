@@ -5,12 +5,12 @@ import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import de.codecentric.trakka_app.R
+import de.codecentric.trakka_app.model.Bookings
 import de.codecentric.trakka_app.util.periodFormater
 import de.codecentric.trakka_app.util.timeFormatter
-import de.codecentric.trakka_app.workperiod.Workperiod
+import de.codecentric.trakka_app.model.Workperiod
 import org.joda.time.DateTime
 import org.joda.time.Duration
-import java.util.*
 
 private const val TAG = "WPViewHolder"
 class WorkPeriodViewHolder(itemView: View, actions: WorkPeriodActions) : RecyclerView.ViewHolder(itemView) {
@@ -38,7 +38,7 @@ class WorkPeriodViewHolder(itemView: View, actions: WorkPeriodActions) : Recycle
             actions.correct(it.rootId, it.start, it.end!!)
         })
         retract.setOnClickListener(makeHandler("Starting retraction") {
-            actions.revoke(it.rootId)
+            Bookings.revoke(it.rootId)
         })
     }
 

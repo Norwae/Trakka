@@ -1,4 +1,4 @@
-package de.codecentric.trakka_app.workperiod
+package de.codecentric.trakka_app.model
 
 import de.codecentric.trakka_app.model.Booking
 import org.joda.time.DateTime

@@ -28,5 +28,4 @@ class UpdateDispatcher<T>(private var value: T, private val listeners: CopyOnWri
             }
         }
     }
-
 }

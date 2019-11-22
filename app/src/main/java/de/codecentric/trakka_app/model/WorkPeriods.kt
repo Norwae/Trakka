@@ -8,6 +8,7 @@ object WorkPeriods {
     const val BUILD_WORK_PERIOD_TAG = "WorkPeriod"
     val listeners = CopyOnWriteArraySet<UpdateListener<List<Workperiod>>>()
     var workperiods by UpdateDispatcher(emptyList(), listeners)
+        private set
 
     fun init() {
         Bookings.bookingListeners += object: UpdateListener<List<Booking>> {
